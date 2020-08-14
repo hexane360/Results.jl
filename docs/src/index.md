@@ -17,3 +17,4 @@ Private members of module `Results`:
 Modules = [Results]
 Public = false
 Order = [:function, :type]
+```
