@@ -1,12 +1,11 @@
 baremodule Results
 
-using Maybe
-import Base: &, |, ∘
-using Base: !
+import Base: &, |, ∘, !
+using Base: Some
 
 export Result, Ok, Err
 export is_ok, is_err
-export as_option
+export to_option, to_result
 export map, map_err
 export unwrap
 
@@ -20,7 +19,14 @@ struct Err{E}
 	err::E
 end
 
-"""Synonym for `Union{Ok{T}, Err{E}}`."""
+"""
+Synonym for `Union{Ok{T}, Err{E}}`.
+
+As well as working with the `Result` combinators defined
+below, `Result`s implement the following protocols:
+ - `iterate`: Yields one `T` if the `Result` is `Ok`, yields nothing otherwise.
+ - `length`: Returns 1 if the `Result` is `Ok`, 0 if `Err`
+"""
 const Result{T, E} = Union{Ok{T}, Err{E}}
 
 """Returns whether a `Result` is `Ok` or `Err`."""
@@ -37,10 +43,20 @@ is_err(r::Err)::Bool = true
 Converts a `Result` to an `Option`, turning
 `Ok` into `Some` and `Err` into `nothing`.
 """
-function as_option end
+function to_option end
 
-function as_option(r::Ok{T})::Some{T} where {T} Some{T}(r.val) end
-function as_option(r::Err)::Nothing nothing end
+function to_option(r::Ok{T})::Some{T} where {T} Some{T}(r.val) end
+function to_option(r::Err)::Nothing nothing end
+
+"""
+Converts an `Option` into a `Result`, using the
+supplied error value in place of a `nothing`.
+"""
+function to_result end
+
+function to_result(o::Some{T}, err::Any)::Ok{T} where {T} Ok(o.value) end
+function to_result(n::Nothing, err::E)::Err{E} where {E} Err(err) end
+function to_result(n::Nothing, err::Function)::Err Err(func()) end
 
 """Map `f` over the contents of an `Ok` value, leaving an `Err` value untouched."""
 function map end
@@ -82,7 +98,7 @@ function iterate(r::Ok{T})::Tuple{T, Nothing} where {T}
 	(r.val, nothing)
 end
 function iterate(r::Err)::Nothing nothing end
-function iterate(r::Result, state::Nothing) nothing end
+function iterate(r::Result, state::Nothing)::Nothing nothing end
 length(r::Ok)::Int = 1
 length(r::Err)::Int = 0
 
@@ -158,5 +174,10 @@ function (|)(result::Result, rs::Union{Result, Function}...)::Result
 	end
 	result
 end
+
+"""Flip an Ok value to an Err value and vice versa."""
+function (!)(result::Ok{T})::Err{T} where {T} Err(result.val) end
+"""Flip an Ok value to an Err value and vice versa."""
+function (!)(result::Err{T})::Ok{T} where {T} Ok(result.err) end
 
 end #module

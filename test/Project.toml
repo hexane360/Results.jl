@@ -1,3 +1,4 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Results = "a6f57dee-de39-11ea-01ba-9f0f7c89923c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
