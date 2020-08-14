@@ -1,0 +1,7 @@
+name = "Results"
+uuid = "a6f57dee-de39-11ea-01ba-9f0f7c89923c"
+authors = ["Colin Gilgenbach <colin@gilgenbach.net>"]
+version = "0.1.0"
+
+[deps]
+Maybe = "334f122f-1118-46cc-837f-bff747ee6f78"
