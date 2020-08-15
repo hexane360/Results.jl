@@ -1,22 +1,38 @@
 baremodule Results
 
 import Base: &, |, ∘, !
-using Base: Some
+import Base: map, promote_rule, convert
+import Base: iterate, eltype, length
+using Base: Some, string, repr
 
 export Result, Ok, Err
 export is_ok, is_err
 export to_option, to_result
-export map, map_err
-export unwrap
+export map_err
+export unwrap, unwrap_or
 
 """Represents an Ok result of computation."""
 struct Ok{T}
 	val::T
 end
 
+Ok(::Type{T}) where {T} = Ok{Type{T}}(T)
+
 """Represents an computation error."""
 struct Err{E}
 	err::E
+end
+
+Err(::Type{T}) where {T} = Err{Type{T}}(T)
+
+promote_rule(::Type{Ok{T}}, ::Type{Ok{S}}) where {T, S <: T} = Ok{T}
+promote_rule(::Type{Err{T}}, ::Type{Err{S}}) where {T, S <: T} = Err{T}
+convert(::Type{Ok{T}}, x::Ok{S}) where {T, S <: T} = Ok{T}(convert(T, x.val))
+convert(::Type{Err{T}}, x::Err{S}) where {T, S <: T} = Err{T}(convert(T, x.err))
+
+"""Exception thrown when `unwrap()` is called on an `Err`"""
+struct UnwrapError <: Exception
+	s::String
 end
 
 """
@@ -56,7 +72,7 @@ function to_result end
 
 function to_result(o::Some{T}, err::Any)::Ok{T} where {T} Ok(o.value) end
 function to_result(n::Nothing, err::E)::Err{E} where {E} Err(err) end
-function to_result(n::Nothing, err::Function)::Err Err(func()) end
+function to_result(n::Nothing, err::Function)::Err Err(err()) end
 
 """Map `f` over the contents of an `Ok` value, leaving an `Err` value untouched."""
 function map end
@@ -72,35 +88,46 @@ map_err(f, r::Err)::Err = Err(f(r.err))
 
 """
 Unwrap an `Ok` value. Throws an error if `r` is `Err` instead.
+
+In the two argument form, `error` is raised if `r` is `Err`.
 """
 function unwrap end
 
 function unwrap(r::Ok{T})::T where {T} r.val end
-function unwrap(r::Err{E}) where {E}
-	isa(r.err, Exception) ? throw(r.err) : error("unwrap() called on an Err")
+function unwrap(r::Err{E})::Union[] where {E}
+	throw(isa(r.err, Exception)
+		? r.err
+		: UnwrapError(string("unwrap() called on an Err: ", repr(r.err)))
+	)
 end
 
-"""Unwrap an `Ok` value, or return `default`"""
-function unwrap(r::Result{T, E}, default::T)::T where {T, E}
-	(r | Ok(default)).val
-end
+function unwrap(r::Ok{T}, error::Exception)::T where {T} r.val end
+function unwrap(r::Err{E}, error::Exception)::Union[] where {E} throw(error) end
 
-"""Unwrap an `Ok` value, or return the result of evaluating `default`"""
-function unwrap(r::Result{T, E}, default::Function)::T where {T, E}
-	if is_ok(r)
-		r.val
-	else
-		default()
-	end
-end
+"""
+Unwrap an `Ok` value, or return `default`.
+
+`default` may be T or a function returning T.
+"""
+function unwrap_or end
+
+function unwrap_or(r::Ok{T}, default::Union{T, Function})::T where {T} r.val end
+function unwrap_or(r::Err, default::T)::T where {T} default end
+function unwrap_or(r::Err, default::Function) default() end
 
 function iterate(r::Ok{T})::Tuple{T, Nothing} where {T}
 	(r.val, nothing)
 end
 function iterate(r::Err)::Nothing nothing end
 function iterate(r::Result, state::Nothing)::Nothing nothing end
+
 length(r::Ok)::Int = 1
 length(r::Err)::Int = 0
+
+eltype(::Type{Ok{T}}) where {T} = T
+eltype(::Type{<:Err}) = Union{}
+eltype(::Type{Result{T,U}}) where {T, U} = T
+
 
 """
 Binds `result` to the proceeding functions. While `result`
@@ -121,7 +148,7 @@ function ∘(result::Result, funcs::Function...)::Result
 	for f in funcs
 		is_err(result) && return result
 		result = f(result.val)
-		if !isa(result, Result)
+		if !isa(result, Result)  #support functions which return a bare value
 			result = Ok(result)
 		end
 	end
@@ -173,6 +200,13 @@ function (|)(result::Result, rs::Union{Result, Function}...)::Result
 		result = isa(r, Function) ? r() : r
 	end
 	result
+end
+
+"""
+Synonym for unwrap_or. Note that it returns a T, while | usually returns a Result{T, E}
+"""
+function (|)(result::Result{T, E}, default::T) where {T, E}
+	unwrap_or(result, default)
 end
 
 """Flip an Ok value to an Err value and vice versa."""
