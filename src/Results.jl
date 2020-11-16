@@ -1,15 +1,17 @@
 baremodule Results
 
-import Base: &, |, ∘, !
+import Base: &, |, !
 import Base: map, promote_rule, convert
 import Base: iterate, eltype, length
-using Base: Some, string, repr
+using Base: Some, string, repr, esc
 
 export Result, Ok, Err
 export is_ok, is_err
 export to_option, to_result
 export map_err
 export unwrap, unwrap_or
+export bind, ⋄
+export @try_unwrap
 
 """Represents an Ok result of computation."""
 struct Ok{T}
@@ -55,6 +57,11 @@ is_ok(r::Err)::Bool = false
 is_err(r::Ok)::Bool = false
 is_err(r::Err)::Bool = true
 
+"""Return whether a `Result` contains a value equal to `v`."""
+is_ok(r::Result, v)::Bool = is_ok(r) && r.val == v
+"""Return whether a `Result` contains an error equal to `v`."""
+is_err(r::Result, v)::Bool = is_err(r) && r.err == v
+
 """
 Converts a `Result` to an `Option`, turning
 `Ok` into `Some` and `Err` into `nothing`.
@@ -62,7 +69,7 @@ Converts a `Result` to an `Option`, turning
 function to_option end
 
 function to_option(r::Ok{T})::Some{T} where {T} Some{T}(r.val) end
-function to_option(r::Err)::Nothing nothing end
+function to_option(::Err)::Nothing nothing end
 
 """
 Converts an `Option` into a `Result`, using the
@@ -71,19 +78,19 @@ supplied error value in place of a `nothing`.
 function to_result end
 
 function to_result(o::Some{T}, err::Any)::Ok{T} where {T} Ok(o.value) end
-function to_result(n::Nothing, err::E)::Err{E} where {E} Err(err) end
-function to_result(n::Nothing, err::Function)::Err Err(err()) end
+function to_result(::Nothing, err::E)::Err{E} where {E} Err(err) end
+function to_result(::Nothing, err::Function)::Err Err(err()) end
 
 """Map `f` over the contents of an `Ok` value, leaving an `Err` value untouched."""
 function map end
 
 map(f, r::Ok)::Ok = Ok(f(r.val))
-map(f, r::Err)::Err = r
+map(::Any, r::Err)::Err = r
 
 """Map `f` over the contents of an `Err` value, leaving an `Ok` value untouched."""
 function map_err end
 
-map_err(f, r::Ok)::Ok = r
+map_err(::Any, r::Ok)::Ok = r
 map_err(f, r::Err)::Err = Err(f(r.err))
 
 """
@@ -100,9 +107,17 @@ function unwrap(r::Err{E})::Union[] where {E}
 		: UnwrapError(string("unwrap() called on an Err: ", repr(r.err)))
 	)
 end
+function unwrap(s::Some{T})::T where {T} s.value end
+function unwrap(::Nothing)::Union[]
+	throw(UnwrapError("unwrap() called on Nothing"))
+end
 
-function unwrap(r::Ok{T}, error::Exception)::T where {T} r.val end
-function unwrap(r::Err{E}, error::Exception)::Union[] where {E} throw(error) end
+function unwrap(r::Ok{T}, error::Union{String, Exception})::T where {T} r.val end
+function unwrap(r::Some{T}, error::Union{String, Exception})::T where {T} r.value end
+function unwrap(r::Union{Err{E}, Nothing}, error::Exception)::Union[] where {E} throw(error) end
+function unwrap(r::Union{Err{E}, Nothing}, error::String)::Union[] where {E}
+	throw(UnwrapError(string(error, ": ", repr(r.err))))
+end
 
 """
 Unwrap an `Ok` value, or return `default`.
@@ -113,13 +128,13 @@ function unwrap_or end
 
 function unwrap_or(r::Ok{T}, default::Union{T, Function})::T where {T} r.val end
 function unwrap_or(r::Err, default::T)::T where {T} default end
-function unwrap_or(r::Err, default::Function) default() end
+function unwrap_or(::Err, default::Function) default() end
 
 function iterate(r::Ok{T})::Tuple{T, Nothing} where {T}
 	(r.val, nothing)
 end
-function iterate(r::Err)::Nothing nothing end
-function iterate(r::Result, state::Nothing)::Nothing nothing end
+function iterate(::Err)::Nothing nothing end
+function iterate(::Result, ::Nothing)::Nothing nothing end
 
 length(r::Ok)::Int = 1
 length(r::Err)::Int = 0
@@ -136,15 +151,15 @@ Any `Err` value will be returned immediately.
 
 # Examples
 ```jldoctest
-julia> Ok("Build") ∘ (val) -> Ok(string(val, " a ")) ∘ (val) -> Ok(string(val, "string"))
+julia> Ok("Build") ⋄ (val) -> Ok(string(val, " a ")) ⋄ (val) -> Ok(string(val, "string"))
 Ok{String}("Build a string")
-julia> Err("Error") ∘ (val) -> Ok(string(val, " a ")) ∘ (val) -> Ok(string(val, "string"))
+julia> Err("Error") ⋄ (val) -> Ok(string(val, " a ")) ⋄ (val) -> Ok(string(val, "string"))
 Err{String}("Error")
-julia> Ok("Build") ∘ (val) -> Err("Error") ∘ function (val) println("long circuited"); Ok("value") end
+julia> Ok("Build") ⋄ (val) -> Err("Error") ⋄ function (val) error("long circuited"); Ok("value") end
 Err{String}("Error")
 ```
 """
-function ∘(result::Result, funcs::Function...)::Result
+function bind(result::Result, funcs::Function...)::Result
 	for f in funcs
 		is_err(result) && return result
 		result = f(result.val)
@@ -154,6 +169,8 @@ function ∘(result::Result, funcs::Function...)::Result
 	end
 	result
 end
+
+const ⋄ = bind
 
 """
 Return the final `Ok` only if every argument is `Ok`.
@@ -205,7 +222,7 @@ end
 """
 Synonym for unwrap_or. Note that it returns a T, while | usually returns a Result{T, E}
 """
-function (|)(result::Result{T, E}, default::T) where {T, E}
+function (|)(result::Result{T, E}, default::T)::T where {T, E}
 	unwrap_or(result, default)
 end
 
@@ -213,5 +230,16 @@ end
 function (!)(result::Ok{T})::Err{T} where {T} Err(result.val) end
 """Flip an Ok value to an Err value and vice versa."""
 function (!)(result::Err{T})::Ok{T} where {T} Ok(result.err) end
+
+has_val(result::Result)::Bool = is_ok(result)
+has_val(::Some)::Bool = true
+has_val(::Nothing)::Bool = false
+
+macro try_unwrap(ex)
+	return quote
+		val = $(esc(ex))
+		has_val(val) ? unwrap(val) : return val
+	end
+end
 
 end #module

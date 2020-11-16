@@ -100,16 +100,24 @@ end
 	@test eltype(Result{Int64, String}) === Int64
 end
 
-@testset "∘ operator" begin
-
+@testset "⋄ operator" begin
+	@test @inferred(Ok(5) ⋄ (n) -> Ok(n*2) ⋄ (n) -> Ok(n+1)) == Ok(11)
+	@test @inferred(Err(5) ⋄ (n) -> Ok(n*2) ⋄ (n) -> Ok(n+1)) == Err(5)
+	@test_throws MethodError Err(5) ⋄ Ok(2) ⋄ (n) -> Ok(n+1)
 end
 
 @testset "& operator" begin
-
+	@test @inferred(Ok(5) & Err(6) & Ok(10)) == Err(6)
+	@test @inferred(Ok(5) & Ok(6) & Ok(7)) == Ok(7)
+	@test @inferred(Ok(5) & () -> Err(6) & Ok(10)) == Err(6)
+	@test @inferred(Ok(5) & Ok(6) & () -> Ok(7)) == Ok(7)
 end
 
 @testset "| operator" begin
-
+	@test @inferred(Err("e1") | Err("e2") | () -> Ok(5)) == Ok(5)
+	@test @inferred(Err("e1") | Err("e2") | Err("e5")) == Err("e5")
+	@test @inferred(Err("e1") | 5) == 5
+	@test @inferred(Ok(8) | 5) == 8
 end
 
 @testset "Doctests" begin
