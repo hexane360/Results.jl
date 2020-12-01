@@ -4,5 +4,5 @@ license = "LGPL-3.0-or-later"
 authors = ["Colin Gilgenbach <colin@gilgenbach.net>"]
 version = "0.1.0"
 
-[deps]
+[extras]
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"

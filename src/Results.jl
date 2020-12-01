@@ -6,7 +6,7 @@ import Base: iterate, eltype, length
 using Base: Some, string, repr, esc
 
 export Result, Ok, Err
-export is_ok, is_err
+export is_ok, is_err, has_val
 export to_option, to_result
 export map_err
 export unwrap, unwrap_or
@@ -114,8 +114,8 @@ end
 
 function unwrap(r::Ok{T}, error::Union{String, Exception})::T where {T} r.val end
 function unwrap(r::Some{T}, error::Union{String, Exception})::T where {T} r.value end
-function unwrap(r::Union{Err{E}, Nothing}, error::Exception)::Union[] where {E} throw(error) end
-function unwrap(r::Union{Err{E}, Nothing}, error::String)::Union[] where {E}
+function unwrap(::Union{Err, Nothing}, error::Exception)::Union[] throw(error) end
+function unwrap(r::Union{Err, Nothing}, error::String)::Union[]
 	throw(UnwrapError(string(error, ": ", repr(r.err))))
 end
 
@@ -127,8 +127,9 @@ Unwrap an `Ok` value, or return `default`.
 function unwrap_or end
 
 function unwrap_or(r::Ok{T}, default::Union{T, Function})::T where {T} r.val end
-function unwrap_or(r::Err, default::T)::T where {T} default end
-function unwrap_or(::Err, default::Function) default() end
+function unwrap_or(s::Some{T}, default::Union{T, Function})::T where {T} s.value end
+function unwrap_or(::Union{Err, Nothing}, default::T)::T where {T} default end
+function unwrap_or(::Union{Err, Nothing}, default::Function) default() end
 
 function iterate(r::Ok{T})::Tuple{T, Nothing} where {T}
 	(r.val, nothing)
@@ -222,7 +223,7 @@ end
 """
 Synonym for unwrap_or. Note that it returns a T, while | usually returns a Result{T, E}
 """
-function (|)(result::Result{T, E}, default::T)::T where {T, E}
+function (|)(result::Union{Ok{T}, Err, Some{T}, Nothing}, default::T)::T where {T}
 	unwrap_or(result, default)
 end
 
