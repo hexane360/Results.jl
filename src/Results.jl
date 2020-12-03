@@ -3,7 +3,8 @@ baremodule Results
 import Base: &, |, !
 import Base: map, promote_rule, convert
 import Base: iterate, eltype, length
-using Base: Some, string, repr, esc
+using Base: Some, string, repr, esc, !==, !=
+using Base: AbstractDict, AbstractArray, isempty, haskey, pop!, get
 
 export Result, Ok, Err
 export is_ok, is_err, has_val
@@ -11,7 +12,8 @@ export to_option, to_result
 export map_err
 export unwrap, unwrap_or
 export bind, ⋄
-export @try_unwrap
+export try_pop!, try_get
+export @try_unwrap, @while_let
 
 """Represents an Ok result of computation."""
 struct Ok{T}
@@ -77,7 +79,7 @@ supplied error value in place of a `nothing`.
 """
 function to_result end
 
-function to_result(o::Some{T}, err::Any)::Ok{T} where {T} Ok(o.value) end
+function to_result(o::Some{T}, err)::Ok{T} where {T} Ok(o.value) end
 function to_result(::Nothing, err::E)::Err{E} where {E} Err(err) end
 function to_result(::Nothing, err::Function)::Err Err(err()) end
 
@@ -236,10 +238,48 @@ has_val(result::Result)::Bool = is_ok(result)
 has_val(::Some)::Bool = true
 has_val(::Nothing)::Bool = false
 
+function try_pop!(a::AbstractArray{T})::Union{Some{T}, Nothing} where {T}
+	isempty(a) ? nothing : Some(pop!(a))
+end
+
+try_pop!(a, e)::Result = to_result(try_pop!(a), e)
+
+function try_get(d::AbstractDict{K, V}, k::K)::Union{Some{V}, Nothing} where {K, V}
+	haskey(d, k) ? Some(d[k]) : nothing
+end
+
+try_get(d, k, e)::Result = to_result(try_get(d, k), e)
+
 macro try_unwrap(ex)
 	return quote
 		val = $(esc(ex))
 		has_val(val) ? unwrap(val) : return val
+	end
+end
+
+"""
+Loop `block` while the assignment expression `assign` returns a value.
+
+# Example
+```jldoctest
+julia> a = [1,2,3];
+julia> @while_let val = try_pop!(a) begin
+           print(val)
+       end
+321
+"""
+macro while_let(assign::Expr, block::Expr)
+	if assign.head !== :(=) || length(assign.args) != 2
+		error("Expected assignment expression, instead got '$(assign)'")
+	end
+	place = assign.args[1]
+	expr = assign.args[2]
+	return quote
+		while true
+			opt = $(esc(expr))
+			$(esc(place)) = has_val(opt) ? unwrap(opt) : break
+			$(esc(block))
+		end
 	end
 end
 
