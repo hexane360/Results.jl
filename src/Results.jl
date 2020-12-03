@@ -1,10 +1,14 @@
-baremodule Results
+module Results
 
-import Base: &, |, !
+include("macros.jl")
+
+import Base: &, |, !, ==
 import Base: map, promote_rule, convert
 import Base: iterate, eltype, length
-using Base: Some, string, repr, esc, error
-using Base: AbstractDict, AbstractArray, isempty, haskey, pop!, get
+#using Base: Some, string, repr, esc, error
+#using Base: AbstractDict, AbstractArray, isempty, haskey, pop!, get
+#using Base: IteratorSize, IteratorEltype, HasLength, HasShape, SizeUnknown
+using Base: IteratorEltype, HasEltype
 
 export Result, Ok, Err
 export is_ok, is_err, has_val
@@ -13,6 +17,7 @@ export map_err
 export unwrap, unwrap_or
 export bind, ⋄
 export try_pop!, try_get
+export try_collect
 export @try_unwrap, @while_let
 
 """Represents an Ok result of computation."""
@@ -32,11 +37,6 @@ promote_rule(::Type{Err{T}}, ::Type{Err{S}}) where {T, S <: T} = Err{T}
 convert(::Type{Ok{T}}, x::Ok{S}) where {T, S <: T} = Ok{T}(convert(T, x.val))
 convert(::Type{Err{T}}, x::Err{S}) where {T, S <: T} = Err{T}(convert(T, x.err))
 
-"""Exception thrown when `unwrap()` is called on an `Err`"""
-struct UnwrapError <: Exception
-	s::String
-end
-
 """
 Synonym for `Union{Ok{T}, Err{E}}`.
 
@@ -46,6 +46,14 @@ below, `Result`s implement the following protocols:
  - `length`: Returns 1 if the `Result` is `Ok`, 0 if `Err`
 """
 const Result{T, E} = Union{Ok{T}, Err{E}}
+
+convert(::Type{Result{T,Union{}}}, x::Ok{S}) where {T, S <: T} = Ok{T}(convert(T, x.val))
+convert(::Type{Result{Union{},E}}, x::Err{S}) where {E, S <: E} = Err{E}(convert(E, x.err))
+
+==(a::Ok, b::Result) = is_ok(b) && a.val == b.val
+==(a::Err, b::Result) = is_err(b) && a.err == b.err
+==(a::Some, b::Some) = a.value == b.value
+==(a::Some, ::Nothing) = false
 
 """Returns whether a `Result` is `Ok` or `Err`."""
 function is_ok end
@@ -106,6 +114,11 @@ function map_err end
 
 map_err(::Any, r::Ok)::Ok = r
 map_err(f, r::Err)::Err = Err(f(r.err))
+
+"""Exception thrown when `unwrap()` is called on an `Err`"""
+struct UnwrapError <: Exception
+	s::String
+end
 
 """
 Unwrap an `Ok` value. Throws an error if `r` is `Err` instead.
@@ -215,6 +228,46 @@ end
 
 const ⋄ = bind
 
+"""Return the passed type with one layer of `Result` values stripped."""
+function strip_result_type end
+
+function strip_result_type(ty::Union)::Array{Type}
+	collect(Iterators.flatten(map(strip_result_type, Base.uniontypes(ty))))
+end
+function strip_result_type(ty::Type{Some{T}})::Array{Type} where {T}; [T] end
+function strip_result_type(::Type{Nothing})::Array{Type}; [] end
+function strip_result_type(ty::Type{Ok{T}})::Array{Type} where {T}; [T] end
+function strip_result_type(::Type{Err{E}})::Array{Type} where {E}; [] end
+strip_result_type(ty::Type)::Array{Type} = [ty]
+
+# TODO optimize for known type/size (see base/array.jl)
+"""
+Collect an iterator of Results into a single Result containing an array.
+Short-circuits on error.
+
+# Examples
+```jldoctest
+julia> try_collect([Ok(5), Ok(10), Ok(3)])
+Ok{Array{Int64,1}}([5, 10, 3])
+julia> try_collect([Ok(10), Err("err1"), Err("err2")])
+Err{String}("err1")
+```
+"""
+function try_collect(iter)
+	#this is a mess
+	T = IteratorEltype(iter) == HasEltype() ? eltype(iter) : Any
+	arr = Union{strip_result_type(T)...}[]
+	first = true
+	wrap_type = Ok
+	for elem in iter
+		if first
+			wrap_type = typeof(elem).name.wrapper
+		end
+		push!(arr, @try_unwrap elem)
+	end
+	wrap_type(arr)
+end
+
 """
 Return the final `Ok` only if every argument is `Ok`.
 Otherwise return the first `Err` value.
@@ -290,58 +343,6 @@ end
 
 try_get(d, k, e)::Result = to_result(try_get(d, k), e)
 
-"""
-Unwraps an Ok or Some value, while returning error values upstream.
-Highly useful for chaining computations together.
 
-# Example
-```jldoctest
-julia> function test(x::Result)::Result
-           y = @try_unwrap(x) .- 5
-           z = @try_unwrap try_pop!(y, "Empty array")
-           Ok(z)
-       end
-test (generic function with 1 method)
-
-julia> test(Ok([5, 8]))
-Ok{Int64}(3)
-julia> test(Ok([]))
-Err{String}("Empty array")
-julia> test(Err(5))
-Err{Int64}(5)
-```
-"""
-macro try_unwrap(ex)
-	return quote
-		val = $(esc(ex))
-		has_val(val) ? unwrap(val) : return val
-	end
-end
-
-"""
-Loop `block` while the assignment expression `assign` returns an Ok or Some value.
-
-# Example
-```jldoctest
-julia> a = [1,2,3];
-julia> @while_let val = try_pop!(a) begin
-           print(val)
-       end
-321
-"""
-macro while_let(assign::Expr, block::Expr)
-	if !(assign.head === :(=) && length(assign.args) == 2)
-		error("Expected assignment expression, instead got '$assign'")
-	end
-	place = assign.args[1]
-	expr = assign.args[2]
-	return quote
-		while true
-			opt = $(esc(expr))
-			$(esc(place)) = has_val(opt) ? unwrap(opt) : break
-			$(esc(block))
-		end
-	end
-end
 
 end #module

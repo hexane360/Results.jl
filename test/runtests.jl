@@ -13,6 +13,17 @@ const unknown_err = let _A = TypeVar(:_A)
 	UnionAll(_A, Err{_A})
 end
 
+@testset "try_collect" begin
+	@test try_collect([Ok(5), Ok(10), Ok(3)]) == Ok([5, 10, 3])
+	@test try_collect([Ok(10), Err("err1"), Err("err2")]) == Err("err1")
+	@test try_collect([Err("err1"), Err("err2")]) == Err("err1")
+	@test try_collect([]) == Ok([])
+	@test try_collect([nothing]) === nothing
+	@test try_collect([Some(5), nothing]) === nothing
+	@test try_collect([Some(5), Some(10)]) == Some([5, 10])
+	@test try_collect([Ok(5), nothing]) === nothing
+end
+
 @testset "is_ok" begin
 	@test is_ok(Ok(5))
 	@test !is_ok(Err(5))
@@ -91,8 +102,8 @@ end
 @testset "iterate" begin
 	@test collect(Ok(5)) == [5]
 	@test collect(Err(5)) == []
-	@test length(Ok(5)) === 1 
-	@test length(Err(5)) === 0 
+	@test length(Ok(5)) === 1
+	@test length(Err(5)) === 0
 	@test Base.IteratorSize(Ok(5)) === Base.HasLength()
 	@test Base.IteratorSize(Err(5)) === Base.HasLength()
 	@test eltype(Ok(5)) === Int64
