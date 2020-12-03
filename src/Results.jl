@@ -3,7 +3,7 @@ baremodule Results
 import Base: &, |, !
 import Base: map, promote_rule, convert
 import Base: iterate, eltype, length
-using Base: Some, string, repr, esc, !==, !=
+using Base: Some, string, repr, esc, error
 using Base: AbstractDict, AbstractArray, isempty, haskey, pop!, get
 
 export Result, Ok, Err
@@ -19,15 +19,13 @@ export @try_unwrap, @while_let
 struct Ok{T}
 	val::T
 end
-
-Ok(::Type{T}) where {T} = Ok{Type{T}}(T)
+#Ok(::Type{T}) where {T} = Ok{Type{T}}(T)
 
 """Represents an computation error."""
 struct Err{E}
 	err::E
 end
-
-Err(::Type{T}) where {T} = Err{Type{T}}(T)
+#Err(::Type{T}) where {T} = Err{Type{T}}(T)
 
 promote_rule(::Type{Ok{T}}, ::Type{Ok{S}}) where {T, S <: T} = Ok{T}
 promote_rule(::Type{Err{T}}, ::Type{Err{S}}) where {T, S <: T} = Err{T}
@@ -83,11 +81,25 @@ function to_result(o::Some{T}, err)::Ok{T} where {T} Ok(o.value) end
 function to_result(::Nothing, err::E)::Err{E} where {E} Err(err) end
 function to_result(::Nothing, err::Function)::Err Err(err()) end
 
-"""Map `f` over the contents of an `Ok` value, leaving an `Err` value untouched."""
+"""
+Map `f` over the contents of an `Ok` value, leaving an `Err` value untouched.
+
+# Example
+```jldoctest
+julia> map((x) -> 2*x, Ok(5))
+Ok{Int64}(10)
+julia> map.((x) -> 2*x, [Ok(5), Err("missing value")])
+2-element Array{Any,1}:
+ Ok{Int64}(10)
+ Err{String}("missing value")
+```
+"""
 function map end
 
 map(f, r::Ok)::Ok = Ok(f(r.val))
+map(f, r::Some)::Some = Some(f(r.val))
 map(::Any, r::Err)::Err = r
+map(::Any, n::Nothing)::Nothing = n
 
 """Map `f` over the contents of an `Err` value, leaving an `Ok` value untouched."""
 function map_err end
@@ -99,32 +111,60 @@ map_err(f, r::Err)::Err = Err(f(r.err))
 Unwrap an `Ok` value. Throws an error if `r` is `Err` instead.
 
 In the two argument form, `error` is raised if `r` is `Err`.
+
+# Examples
+```jldoctest
+julia> unwrap(Ok(5))
+5
+julia> unwrap(Err(0))
+ERROR: Results.UnwrapError("unwrap() called on an Err: 0")
+julia> unwrap(nothing)
+ERROR: Results.UnwrapError("unwrap() called on Nothing")
+julia> unwrap(nothing, "value is none")
+ERROR: Results.UnwrapError("value is none")
+julia> unwrap(nothing, BoundsError([1,2]))
+ERROR: BoundsError: attempt to access 2-element Array{Int64,1}
+```
 """
 function unwrap end
 
 function unwrap(r::Ok{T})::T where {T} r.val end
-function unwrap(r::Err{E})::Union[] where {E}
+function unwrap(r::Err{E})::Union{} where {E}
 	throw(isa(r.err, Exception)
 		? r.err
 		: UnwrapError(string("unwrap() called on an Err: ", repr(r.err)))
 	)
 end
 function unwrap(s::Some{T})::T where {T} s.value end
-function unwrap(::Nothing)::Union[]
+function unwrap(::Nothing)::Union{}
 	throw(UnwrapError("unwrap() called on Nothing"))
 end
 
 function unwrap(r::Ok{T}, error::Union{String, Exception})::T where {T} r.val end
 function unwrap(r::Some{T}, error::Union{String, Exception})::T where {T} r.value end
-function unwrap(::Union{Err, Nothing}, error::Exception)::Union[] throw(error) end
-function unwrap(r::Union{Err, Nothing}, error::String)::Union[]
-	throw(UnwrapError(string(error, ": ", repr(r.err))))
+function unwrap(::Union{Err, Nothing}, error::Exception)::Union{} throw(error) end
+function unwrap(v::Union{Err, Nothing}, error::Function)::Union{} unwrap(v, error()) end
+function unwrap(::Union{Err, Nothing}, error::String)::Union{}
+	throw(UnwrapError(string(error)))
 end
 
 """
 Unwrap an `Ok` value, or return `default`.
 
 `default` may be T or a function returning T.
+
+# Examples
+```jldoctest
+julia> unwrap_or(Ok("value"), "error")
+"value"
+julia> unwrap_or(Err(5), "error")
+"error"
+julia> unwrap_or(Some("value"), () -> begin println("Generating error"); "error" end)
+"value"
+julia> unwrap_or(nothing, () -> begin println("Generating error"); "error" end)
+Generating error
+"error"
+```
 """
 function unwrap_or end
 
@@ -250,6 +290,27 @@ end
 
 try_get(d, k, e)::Result = to_result(try_get(d, k), e)
 
+"""
+Unwraps an Ok or Some value, while returning error values upstream.
+Highly useful for chaining computations together.
+
+# Example
+```jldoctest
+julia> function test(x::Result)::Result
+           y = @try_unwrap(x) .- 5
+           z = @try_unwrap try_pop!(y, "Empty array")
+           Ok(z)
+       end
+test (generic function with 1 method)
+
+julia> test(Ok([5, 8]))
+Ok{Int64}(3)
+julia> test(Ok([]))
+Err{String}("Empty array")
+julia> test(Err(5))
+Err{Int64}(5)
+```
+"""
 macro try_unwrap(ex)
 	return quote
 		val = $(esc(ex))
@@ -258,7 +319,7 @@ macro try_unwrap(ex)
 end
 
 """
-Loop `block` while the assignment expression `assign` returns a value.
+Loop `block` while the assignment expression `assign` returns an Ok or Some value.
 
 # Example
 ```jldoctest
@@ -269,8 +330,8 @@ julia> @while_let val = try_pop!(a) begin
 321
 """
 macro while_let(assign::Expr, block::Expr)
-	if assign.head !== :(=) || length(assign.args) != 2
-		error("Expected assignment expression, instead got '$(assign)'")
+	if !(assign.head === :(=) && length(assign.args) == 2)
+		error("Expected assignment expression, instead got '$assign'")
 	end
 	place = assign.args[1]
 	expr = assign.args[2]
