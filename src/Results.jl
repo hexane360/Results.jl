@@ -105,7 +105,7 @@ julia> map.((x) -> 2*x, [Ok(5), Err("missing value")])
 function map end
 
 map(f, r::Ok)::Ok = Ok(f(r.val))
-map(f, r::Some)::Some = Some(f(r.val))
+map(f, r::Some)::Some = Some(f(r.value))
 map(::Any, r::Err)::Err = r
 map(::Any, n::Nothing)::Nothing = n
 
@@ -153,10 +153,11 @@ function unwrap(::Nothing)::Union{}
 	throw(UnwrapError("unwrap() called on Nothing"))
 end
 
-function unwrap(r::Ok{T}, error::Union{String, Exception})::T where {T} r.val end
-function unwrap(r::Some{T}, error::Union{String, Exception})::T where {T} r.value end
+function unwrap(r::Ok{T}, error)::T where {T} r.val end
+function unwrap(r::Some{T}, error)::T where {T} r.value end
 function unwrap(::Union{Err, Nothing}, error::Exception)::Union{} throw(error) end
-function unwrap(v::Union{Err, Nothing}, error::Function)::Union{} unwrap(v, error()) end
+function unwrap(v::Err, error::Function)::Union{} unwrap(v, error(v.err)) end
+function unwrap(v::Nothing, error::Function)::Union{} unwrap(v, error(v)) end
 function unwrap(::Union{Err, Nothing}, error::String)::Union{}
 	throw(UnwrapError(string(error)))
 end
@@ -172,9 +173,9 @@ julia> unwrap_or(Ok("value"), "error")
 "value"
 julia> unwrap_or(Err(5), "error")
 "error"
-julia> unwrap_or(Some("value"), () -> begin println("Generating error"); "error" end)
+julia> unwrap_or(Some("value"), (e) -> begin println("Generating error"); "error" end)
 "value"
-julia> unwrap_or(nothing, () -> begin println("Generating error"); "error" end)
+julia> unwrap_or(nothing, (e) -> begin println("Generating error"); "error" end)
 Generating error
 "error"
 ```
