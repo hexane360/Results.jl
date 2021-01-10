@@ -47,8 +47,8 @@ below, `Result`s implement the following protocols:
 """
 const Result{T, E} = Union{Ok{T}, Err{E}}
 
-convert(::Type{Result{T,Union{}}}, x::Ok{S}) where {T, S <: T} = Ok{T}(convert(T, x.val))
-convert(::Type{Result{Union{},E}}, x::Err{S}) where {E, S <: E} = Err{E}(convert(E, x.err))
+convert(::Type{Result{T,E}}, x::Ok{S}) where {T, E, S <: T} = Ok{T}(convert(T, x.val))
+convert(::Type{Result{T,E}}, x::Err{S}) where {T, E, S <: E} = Err{E}(convert(E, x.err))
 
 ==(a::Ok, b::Result) = is_ok(b) && a.val == b.val
 ==(a::Err, b::Result) = is_err(b) && a.err == b.err
@@ -185,7 +185,7 @@ function unwrap_or end
 function unwrap_or(r::Ok{T}, default::Union{T, Function})::T where {T} r.val end
 function unwrap_or(s::Some{T}, default::Union{T, Function})::T where {T} s.value end
 function unwrap_or(::Union{Err, Nothing}, default::T)::T where {T} default end
-function unwrap_or(::Union{Err, Nothing}, default::Function) default() end
+function unwrap_or(e::Union{Err, Nothing}, default::Function) default(e) end
 
 function iterate(r::Ok{T})::Tuple{T, Nothing} where {T}
 	(r.val, nothing)
