@@ -47,11 +47,11 @@ below, `Result`s implement the following protocols:
 """
 const Result{T, E} = Union{Ok{T}, Err{E}}
 
-convert(::Type{Result{T,E}}, x::Ok{S}) where {T, E, S <: T} = Ok{T}(convert(T, x.val))
-convert(::Type{Result{T,E}}, x::Err{S}) where {T, E, S <: E} = Err{E}(convert(E, x.err))
+#convert(::Type{Result{T,E}}, x::Ok{S}) where {T, E, S <: T} = Ok{T}(convert(T, x.val))
+#convert(::Type{Result{T,E}}, x::Err{S}) where {T, E, S <: E} = Err{E}(convert(E, x.err))
 
-==(a::Ok, b::Result) = is_ok(b) && a.val == b.val
-==(a::Err, b::Result) = is_err(b) && a.err == b.err
+==(a::Ok, b::Ok) = a.val == b.val
+==(a::Ok, b::Err) = false
 ==(a::Some, b::Some) = a.value == b.value
 ==(a::Some, ::Nothing) = false
 
@@ -76,8 +76,10 @@ Converts a `Result` to an `Option`, turning
 """
 function to_option end
 
-function to_option(r::Ok{T})::Some{T} where {T} Some{T}(r.val) end
+function to_option(r::Ok{T})::Some{T} where {T} Some(r.val) end
 function to_option(::Err)::Nothing nothing end
+#function to_option(val::T)::Some{T} where {T} Some(val) end
+#function to_option(::Nothing)::Nothing nothing end
 
 """
 Converts an `Option` into a `Result`, using the
@@ -86,8 +88,28 @@ supplied error value in place of a `nothing`.
 function to_result end
 
 function to_result(o::Some{T}, err)::Ok{T} where {T} Ok(o.value) end
+#function to_result(val::T, err)::Ok{T} where {T} Ok(val) end
 function to_result(::Nothing, err::E)::Err{E} where {E} Err(err) end
 function to_result(::Nothing, err::Function)::Err Err(err()) end
+
+"""
+Wraps a value in an `Option`. Useful for handling nullable values.
+"""
+function wrap_option end
+
+function wrap_option(val::T)::Some{T} where {T} Some(val) end
+function wrap_option(::Nothing)::Nothing nothing end
+
+"""
+Wraps a value in a `Result`, using the
+supplied error value in place of a `nothing`.
+Useful for handling nullable values.
+"""
+function wrap_result end
+
+function wrap_result(val::T, err)::Ok{T} where {T} Ok(val) end
+function wrap_result(::Nothing, err::E)::Err{E} where {E} Err(err) end
+function wrap_result(::Nothing, err::Function)::Err Err(err()) end
 
 """
 Map `f` over the contents of an `Ok` value, leaving an `Err` value untouched.
@@ -103,7 +125,6 @@ julia> map.((x) -> 2*x, [Ok(5), Err("missing value")])
 ```
 """
 function map end
-
 map(f, r::Ok)::Ok = Ok(f(r.val))
 map(f, r::Some)::Some = Some(f(r.value))
 map(::Any, r::Err)::Err = r
@@ -121,7 +142,7 @@ struct UnwrapError <: Exception
 end
 
 """
-Unwrap an `Ok` value. Throws an error if `r` is `Err` instead.
+Unwrap an `Ok` value. Throws an error if `r` is `Err` instead.#
 
 In the two argument form, `error` is raised if `r` is `Err`.
 
@@ -332,18 +353,28 @@ has_val(result::Result)::Bool = is_ok(result)
 has_val(::Some)::Bool = true
 has_val(::Nothing)::Bool = false
 
+"""
+Try to pop a value from an array.
+"""
 function try_pop!(a::AbstractArray{T})::Union{Some{T}, Nothing} where {T}
 	isempty(a) ? nothing : Some(pop!(a))
 end
 
 try_pop!(a, e)::Result = to_result(try_pop!(a), e)
 
+"""
+Try to get a value out of a dictionary.
+"""
 function try_get(d::AbstractDict{K, V}, k::K)::Union{Some{V}, Nothing} where {K, V}
 	haskey(d, k) ? Some(d[k]) : nothing
 end
 
 try_get(d, k, e)::Result = to_result(try_get(d, k), e)
 
-
+"""
+Try to get a value out of an iterator.
+"""
+try_next(iter; state=nothing)::Union{Some, Nothing} = map((x) -> x[1], wrap_option(iterate(iter, state)))
+try_next(iter, e; state=nothing)::Result = to_result(try_next(iter, state=state), e)
 
 end #module

@@ -13,6 +13,11 @@ const unknown_err = let _A = TypeVar(:_A)
 	UnionAll(_A, Err{_A})
 end
 
+@testset "convert" begin
+	@test isa(convert(Ok{AbstractString}, Ok{String}("test")), Ok{AbstractString})
+	@test isa(convert(Result{Int, Union{}}, Ok(5)), Result{Int, Union{}})
+end
+
 @testset "try_collect" begin
 	@test try_collect([Ok(5), Ok(10), Ok(3)]) == Ok([5, 10, 3])
 	@test try_collect([Ok(10), Err("err1"), Err("err2")]) == Err("err1")
@@ -95,8 +100,8 @@ end
 @testset "unwrap_or" begin
 	@test @inferred(unwrap_or(Ok(5), 0)) === 5
 	@test @inferred(unwrap_or(Err("e"), 0)) === 0
-	@test @inferred(unwrap_or(Ok(5), () -> error("long circuit"))) === 5
-	@test @inferred(unwrap_or(Err("e"), () -> 1)) === 1
+	@test @inferred(unwrap_or(Ok(5), (e) -> error("long circuit"))) === 5
+	@test @inferred(unwrap_or(Err("e"), (e) -> 1)) === 1
 end
 
 @testset "iterate" begin
