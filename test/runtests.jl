@@ -78,15 +78,16 @@ end
 	end
 end
 
-@testset "map" begin
+@testset "try_map" begin
 	local double(x) = 2*x
-	@test @inferred(map(double, Ok(0))) === Ok(0)
-	@test @inferred(map(double, Ok(8))) === Ok(16)
-	@test @inferred(map(double, Err("error"))) === Err("error")
+	@test @inferred(try_map(double, Ok(0))) === Ok(0)
+	@test @inferred(try_map(double, Ok(8))) === Ok(16)
+	@test @inferred(try_map(double, Err("error"))) === Err("error")
+	@test try_map(Some(+), Some(5), Some(10)) === Some(15)
 
-	@testset "map type inference" begin
-		@test possible_types(map, (Function, Ok{Int64})) == Set([unknown_ok])
-		@test possible_types(map, (Function, Err{String})) == Set([Err{String}])
+	@testset "try_map type inference" begin
+		@test possible_types(try_map, (Function, Ok{Int64})) == Set([unknown_ok])
+		@test possible_types(try_map, (Function, Err{String})) == Set([Err{String}])
 	end
 end
 
@@ -100,26 +101,39 @@ end
 @testset "unwrap_or" begin
 	@test @inferred(unwrap_or(Ok(5), 0)) === 5
 	@test @inferred(unwrap_or(Err("e"), 0)) === 0
-	@test @inferred(unwrap_or(Ok(5), (e) -> error("long circuit"))) === 5
-	@test @inferred(unwrap_or(Err("e"), (e) -> 1)) === 1
+	@test @inferred(unwrap_or(Ok(5), () -> error("long circuit"))) === 5
+	@test @inferred(unwrap_or(Err("e"), () -> 1)) === 1
 end
 
 @testset "iterate" begin
 	@test collect(Ok(5)) == [5]
 	@test collect(Err(5)) == []
+	@test collect(Some(5)) == [5]
+	@test collect(nothing) == []
+
 	@test length(Ok(5)) === 1
 	@test length(Err(5)) === 0
+	@test length(Some(5)) === 1
+	@test length(nothing) === 0
+
 	@test Base.IteratorSize(Ok(5)) === Base.HasLength()
 	@test Base.IteratorSize(Err(5)) === Base.HasLength()
+	@test Base.IteratorSize(Some(5)) === Base.HasLength()
+	@test Base.IteratorSize(nothing) === Base.HasLength()
+
 	@test eltype(Ok(5)) === Int64
 	@test eltype(Err(6)) === Union{}
 	@test eltype(Result{Int64, String}) === Int64
+	@test eltype(Ok(5)) === Int64
+	@test eltype(nothing) === Union{}
+	@test eltype(Option{Int64}) === Int64
 end
 
 @testset "⋄ operator" begin
 	@test @inferred(Ok(5) ⋄ (n) -> Ok(n*2) ⋄ (n) -> Ok(n+1)) == Ok(11)
 	@test @inferred(Err(5) ⋄ (n) -> Ok(n*2) ⋄ (n) -> Ok(n+1)) == Err(5)
-	@test_throws MethodError Err(5) ⋄ Ok(2) ⋄ (n) -> Ok(n+1)
+	@test (Ok(5) ⋄ Ok(2) ⋄ >(1)) == Ok(true)
+	@test (Err(5) ⋄ Ok(2) ⋄ (n) -> Ok(n+1)) == Err(5)
 end
 
 @testset "& operator" begin
@@ -132,8 +146,7 @@ end
 @testset "| operator" begin
 	@test @inferred(Err("e1") | Err("e2") | () -> Ok(5)) == Ok(5)
 	@test @inferred(Err("e1") | Err("e2") | Err("e5")) == Err("e5")
-	@test @inferred(Err("e1") | 5) == 5
-	@test @inferred(Ok(8) | 5) == 8
+	@test_throws MethodError Err("e1") | 5
 end
 
 @testset "Doctests" begin

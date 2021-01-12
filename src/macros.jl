@@ -12,11 +12,11 @@ julia> function test(x::Result)::Result
 test (generic function with 1 method)
 
 julia> test(Ok([5, 8]))
-Ok{Int64}(3)
+Ok(3)
 julia> test(Ok([]))
-Err{String}("Empty array")
+Err("Empty array")
 julia> test(Err(5))
-Err{Int64}(5)
+Err(5)
 ```
 """
 macro try_unwrap(ex)
@@ -50,4 +50,48 @@ macro while_let(assign::Expr, block::Expr)
 			$(esc(block))
 		end
 	end
+end
+
+"""
+Run `then_block` if the assignment expression returns an `Ok` or `Some` value.
+Runs `else_block` otherwise.
+
+# Example
+```jldoctest
+julia> @if_let val = Some(5) begin
+           2*val
+       end begin
+           0
+       end
+10
+julia> @if_let val = Err("error") begin
+           2*val
+       end begin
+           0
+       end
+0
+julia> @if_let val = Err("error") begin
+           println(val)
+       end
+```
+"""
+macro if_let(assign::Expr, then_block::Expr, else_block::Expr)
+	if !(assign.head === :(=) && length(assign.args) == 2)
+		error("Expected assignment expression, instead got '$assign'")
+	end
+	place = assign.args[1]
+	expr = assign.args[2]
+	return quote
+		opt = $(esc(expr))
+		if has_val(opt)
+			$(esc(place)) = unwrap(opt)
+			$(esc(then_block))
+		else
+			$(esc(else_block))
+		end
+	end
+end
+
+macro if_let(assign::Expr, then_block::Expr)
+	:(@if_let $assign $then_block begin nothing end)
 end
