@@ -6,7 +6,7 @@ Highly useful for chaining computations together.
 ```jldoctest
 julia> function test(x::Result)::Result
            y = @try_unwrap(x) .- 5
-           z = @try_unwrap try_pop!(y, "Empty array")
+           z = @try_unwrap try_pop!(y) |> ok_or("Empty array")
            Ok(z)
        end
 test (generic function with 1 method)
@@ -27,6 +27,71 @@ macro try_unwrap(ex)
 end
 
 """
+Macro version of `unwrap_or`, which allows for the
+embedding of control statements in the or clause.
+
+# Example
+julia> for v in [[2,3,4], [3,4,5], [], [1]]
+           println(@unwrap_or(try_get(v, 1), break))
+       end
+2
+3
+"""
+macro unwrap_or(expr, or)
+	quote
+		v = $(esc(expr))
+		has_val(v) ? unwrap(v) : $(esc(or))
+	end
+end
+
+"""
+Catches an exception inside `expr` and returns a `Result` instead.
+
+If a type is given, only exceptions of that type will be caught.
+
+# Examples
+```jldoctest
+julia> @catch_result begin
+           arr = [5,3,2]
+           arr[4]
+       end
+Err(BoundsError([5, 3, 2], (4,)))
+julia> @catch_result [5,3,2][3]
+Ok(2)
+julia> @catch_result TypeError [5,3,2][4]
+ERROR: BoundsError: attempt to access 3-element Array{Int64,1} at index [4]
+```
+"""
+macro catch_result(exception_type, expr)
+	quote
+		try
+			Ok($(esc(expr)))
+		catch e
+			isa(e, $exception_type) ? Err(e) : rethrow(e)
+		end
+	end
+end
+
+macro catch_result(expr) :(@catch_result(Exception, $(esc(expr)))) end
+
+"""
+If `predicate`, evaluate the enclosed expression wrapped in `Some`.
+Otherwise, return `None`.
+
+# Example
+```jldoctest
+julia> try_get(a, index) = @some_if isassigned(a, index) a[index]
+try_get (generic function with 1 method)
+julia> try_get([1,2,3], 1)
+Some(1)
+julia> try_get([1,2,3], 10)
+None
+"""
+macro some_if(predicate, expr)
+	:($(esc(predicate)) ? Some($(esc(expr))) : none)
+end
+
+"""
 Loop `block` while the assignment expression `assign` returns an Ok or Some value.
 
 # Example
@@ -43,7 +108,7 @@ macro while_let(assign::Expr, block::Expr)
 	end
 	place = assign.args[1]
 	expr = assign.args[2]
-	return quote
+	quote
 		while true
 			opt = $(esc(expr))
 			$(esc(place)) = has_val(opt) ? unwrap(opt) : break
