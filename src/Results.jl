@@ -282,6 +282,8 @@ julia> Ok(x -> 2*x) ← Ok(5)
 Ok(10)
 julia> x -> 2*x ← Ok(5)  # Be careful with precedence!
 #1 (generic function with 1 method)
+julia> (x -> 2*x) ← (x -> x+7) ← Some(3)
+Some(20)
 ```
 """
 const ← = try_map
@@ -291,8 +293,12 @@ Argument-swapped version of try_map. Enter as `\\rightarrow`.
 
 # Example
 ```jldoctest
-julia> Ok(5) → x -> 2*x
-Ok(10)
+julia> Some(5) → x -> 2*x
+Some(10)
+julia> Ok(5) → (x -> 2*x) → (x -> x+7)  # arrows in Julia are right-associative!
+ERROR: MethodError
+julia> Ok(5) → (x -> 2*x) ∘ (x -> x+7) # but this will work
+Ok(24)
 ```
 """
 function → end
