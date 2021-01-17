@@ -31,11 +31,13 @@ Macro version of `unwrap_or`, which allows for the
 embedding of control statements in the or clause.
 
 # Example
+```jldoctest
 julia> for v in [[2,3,4], [3,4,5], [], [1]]
            println(@unwrap_or(try_get(v, 1), break))
        end
 2
 3
+```
 """
 macro unwrap_or(expr, or)
 	quote
@@ -82,10 +84,11 @@ Otherwise, return `None`.
 ```jldoctest
 julia> try_get(a, index) = @some_if isassigned(a, index) a[index]
 try_get (generic function with 1 method)
-julia> try_get([1,2,3], 1)
-Some(1)
+julia> try_get([2,3,4], 2)
+Some(3)
 julia> try_get([1,2,3], 10)
-None
+
+```
 """
 macro some_if(predicate, expr)
 	:($(esc(predicate)) ? Some($(esc(expr))) : none)
@@ -97,10 +100,12 @@ Loop `block` while the assignment expression `assign` returns an Ok or Some valu
 # Example
 ```jldoctest
 julia> a = [1,2,3];
+
 julia> @while_let val = try_pop!(a) begin
            print(val)
        end
 321
+```
 """
 macro while_let(assign::Expr, block::Expr)
 	if !(assign.head === :(=) && length(assign.args) == 2)

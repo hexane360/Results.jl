@@ -20,6 +20,7 @@ end
 	@testset "convert" begin
 		@test isa(convert(Ok{AbstractString}, Ok{String}("test")), Ok{AbstractString})
 		@test isa(convert(Result{Int, Union{}}, Ok(5)), Result{Int, Union{}})
+		@test isa(convert(Result{Any, String}, Ok(5)), Result{Any, String})
 	end
 
 	@testset "try_collect" begin
