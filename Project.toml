@@ -2,7 +2,7 @@ name = "Results"
 uuid = "a6f57dee-de39-11ea-01ba-9f0f7c89923c"
 license = "LGPL-3.0-or-later"
 authors = ["Colin Gilgenbach <colin@gilgenbach.net>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [compat]
 julia = "^1.5"
