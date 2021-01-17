@@ -4,7 +4,7 @@ Results.jl: Fallable computation for Julia
 Results.jl provides a `Result` and `Option` type for computation,
 as featured in Rust, Haskell (as `Either`), OCaml, and many more.
 
-[![](https://img.shields.io/badge/docs-stable-blue)][docs-url] ![](https://img.shields.io/github/last-commit/hexane360/Results.jl) ![](https://img.shields.io/github/release-date/hexane360/Results.jl)
+[![](https://github.com/hexane360/Results.jl/workflows/CI/badge.svg)](https://github.com/hexane360/Results.jl/actions?query=workflow%3ACI) [![](https://img.shields.io/github/last-commit/hexane360/Results.jl)](https://github.com/hexane360/Results.jl/commits) [![version](https://juliahub.com/docs/Results/version.svg)](https://juliahub.com/ui/Packages/Results/05hVy) [![](https://img.shields.io/badge/docs-stable-blue)][docs-url]
 
 This library is distributed under the LGPL v3.0 license.
 
