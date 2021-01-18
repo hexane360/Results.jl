@@ -346,7 +346,7 @@ Map `f` over the contents of an `Ok` or `Some` value,
 leaving a `None` or `Err` value untouched.
 
 # Example
-```jldoctest
+```jldoctest; filter = r"Array{\\S+,1}|Vector{\\S+}"
 julia> try_map((x) -> 2*x, Ok(5))
 Ok(10)
 julia> try_map(+, Err("First error"), Err("Second error"))
@@ -451,7 +451,7 @@ If it is a string, it is passed as a message to [`UnwrapError`](@ref).
 If it is a function, it is called with an error value to produce an error.
 
 # Examples
-```jldoctest
+```jldoctest; filter = r"Array{\\S+,1}|Vector{\\S+}"
 julia> unwrap(Ok(5))
 5
 julia> unwrap(Err(0))
@@ -660,7 +660,7 @@ Collect an iterator of Options or Results into a single Option or Result contain
 Short-circuits on error.
 
 # Examples
-```jldoctest
+```jldoctest; filter = r"Int32|Int64"
 julia> try_collect([Ok(5), Ok(10), Ok(3)])
 Ok([5, 10, 3])
 julia> try_collect([Ok(10), Err("err1"), Err("err2")])

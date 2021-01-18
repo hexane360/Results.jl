@@ -37,7 +37,7 @@ end
 		@test try_collect(Any[nothing]) === nothing
 
 		@test_throws ErrorException try_collect([5, 10, 30])
-		@test try_collect(Union{Int64, Ok{Int64}}[5, Ok(10), Ok(20)]) == Ok([5, 10, 20])
+		@test try_collect(Union{Int, Ok{Int}}[5, Ok(10), Ok(20)]) == Ok([5, 10, 20])
 		@test_throws ErrorException try_collect(Any[5, Ok(10), Ok(20)])
 	end
 
@@ -66,7 +66,7 @@ end
 	@testset "ok" begin
 		@test @inferred(ok(Ok(5))) === Some(5)
 		@test @inferred(ok(Err("err"))) === nothing
-		local r::Result{Int64, String} = Ok(0)
+		local r::Result{Int, String} = Ok(0)
 		@test @inferred(ok(r)) === Some(0)
 
 		@testset "ok() type inference" begin
@@ -133,10 +133,10 @@ end
 		@test Base.IteratorSize(Some(5)) === Base.HasLength()
 		@test Base.IteratorSize(nothing) === Base.HasLength()
 
-		@test eltype(Ok(5)) === Int64
+		@test eltype(Ok(5)) === Int
 		@test eltype(Err(6)) === Union{}
 		@test eltype(Result{Int64, String}) === Int64
-		@test eltype(Ok(5)) === Int64
+		@test eltype(Ok(5)) === Int
 		@test eltype(nothing) === Union{}
 		@test eltype(Option{Int64}) === Int64
 	end

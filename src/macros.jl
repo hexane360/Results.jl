@@ -52,7 +52,7 @@ Catches an exception inside `expr` and returns a `Result` instead.
 If a type is given, only exceptions of that type will be caught.
 
 # Examples
-```jldoctest
+```jldoctest; filter = r"Array{\\S+,1}|Vector{\\S+}"
 julia> @catch_result begin
            arr = [5,3,2]
            arr[4]
