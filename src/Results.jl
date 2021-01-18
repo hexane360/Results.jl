@@ -122,6 +122,14 @@ end
 function iterate(::None)::Nothing nothing end
 function iterate(::Option, ::Nothing)::Nothing nothing end
 
+# workaround because we can't make a tuple with element type Type{T}
+function iterate(s::Ok{Type{T}})::Tuple{DataType, Nothing} where {T}
+	(s.value, nothing)
+end
+function iterate(s::Some{Type{T}})::Tuple{DataType, Nothing} where {T}
+	(s.value, nothing)
+end
+
 """[`length`](https://docs.julialang.org/en/v1/base/base/#Base.length) for [`Ok`](@ref) values"""
 length(r::Ok)::Int = 1
 """[`length`](https://docs.julialang.org/en/v1/base/base/#Base.length) for [`Err`](@ref) values"""
