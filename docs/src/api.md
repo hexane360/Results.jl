@@ -3,87 +3,13 @@ CurrentModule = Results
 ```
 # API
 
-## Exported members
+`Results.jl` is structured into four modules:
+ - [`Results.Types`](@ref types) defines the core types
+ - [`Results.Functions`](@ref functions) defines functions for operating on `Result`s and `Option`s
+ - [`Results.Macros`](@ref macros) defines macros for working with result types
+ - [`Results.Collection`](@ref collection) defines Option interfaces for working with collections
+ - `Results.Operators` defines operators for working with result types.
 
-### Core types
-
-```@docs
-Result
-Option
-Ok
-Err
-None
-none
-```
-
-### Input functions
-
-```@docs
-to_option
-to_result
-```
-
-### Output functions
-
-```@docs
-unwrap
-unwrap_or
-to_nullable
-```
-
-### Combinators
-
-```@docs
-try_map
-map_err
-and_then
-try_collect
-flatten
-ok
-ok_or
-```
-
-### Predicate functions
-
-```@docs
-is_ok
-is_err
-is_some
-is_none
-has_val
-```
-
-### Collection utilities
-
-```@docs
-try_pop!
-try_get
-try_peek
-try_first
-try_last
-```
-
-### Macros
-
-```@autodocs
-Modules = [Results]
-Private = false
-Order = [:macro]
-```
-
-## Un-exported members
-
-```@autodocs
-Modules = [Results]
-Public = false
-Order = [:module, :type, :constant, :function, :macro]
-Filter = f -> !isa(f, Function) || parentmodule(f) != Base
-```
-
-## [`Base`](https://docs.julialang.org/en/v1/base/base/) methods extended
-
-```@autodocs
-Modules = [Results]
-Order = [:function]
-Filter = f -> parentmodule(f) == Base
-```
+Important members of each module are re-exported, so the end user
+usually does not need to import these modules directly. Operators
+are not exported by default.

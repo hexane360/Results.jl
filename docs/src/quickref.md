@@ -40,8 +40,8 @@ The functions provided fall into a few main types:
 | Result   | [`map_err`](@ref)            | Map a function over an error value                                                                                                                         |
 | Both     | [`and_then`](@ref)           | Chain fallable functions together                                                                                                                          |
 | Both     | [`try_collect`](@ref)        | Collect an iterable of results into a result containing an array                                                                                           |
-| Option   | [`try_collect_option`](@ref) | Version of [`try_collect`](@ref) specialized for [`Option`](@ref).                                                                                         |
-| Result   | [`try_collect_result`](@ref) | Version of [`try_collect`](@ref) specialized for [`Result`](@ref).                                                                                         |
+| Option   | [`try_collect_option`](@ref Functions.try_collect_option) | Version of [`try_collect`](@ref) specialized for [`Option`](@ref). Unexported.                                                |
+| Result   | [`try_collect_result`](@ref Functions.try_collect_result) | Version of [`try_collect`](@ref) specialized for [`Result`](@ref). Unexported.                                                |
 | Both     | [`flatten`](@ref)            | Flatten a nested result type                                                                                                                               |
 
 ### Predicate Functions
@@ -89,8 +89,8 @@ In addition, three new operators are introduced for use with `Result`s and `Opti
 
 | Operator                | Description                                                                                     |
 | :---                    | :---                                                                                            |
-| [`←`](@ref Results.:←)  | [`try_map`](@ref): applies a function to the inside of a result type.                           |
-| [`→`](@ref Results.:→)  | Argument-flipped version of [`try_map`](@ref).                                                  |
-| [`⊗`](@ref Results.:⊗) | [`and_then`](@ref)/monadic bind: connects fallable functions together and returns errors early. |
+| [`←`](@ref Functions.:←)  | [`try_map`](@ref): applies a function to the inside of a result type.                           |
+| [`→`](@ref Functions.:→)  | Argument-flipped version of [`try_map`](@ref).                                                  |
+| [`⊗`](@ref Functions.:⊗) | [`and_then`](@ref)/monadic bind: connects fallable functions together and returns errors early. |
 
 These new operators are not exported by default.

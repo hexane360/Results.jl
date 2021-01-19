@@ -4,21 +4,35 @@ push!(LOAD_PATH, "../src/")
 
 using Documenter
 using Results
-#using Results: ←, →, ⊗, try_collect_result, try_collect_option
 
 DocMeta.setdocmeta!(Results, :DocTestSetup,
-                    :(using Results;
-                      using Results: ⊗, ←, →, strip_result_type))
+                    :(using Results))
+DocMeta.setdocmeta!(Results.Types, :DocTestSetup,
+                    :(using Results; using Results.Types))
+DocMeta.setdocmeta!(Results.Functions, :DocTestSetup,
+                    :(using Results; using Results.Functions; using Results.Operators))
+DocMeta.setdocmeta!(Results.Macros, :DocTestSetup,
+                    :(using Results; using Results.Macros))
+DocMeta.setdocmeta!(Results.Collection, :DocTestSetup,
+                    :(using Results; using Results.Collection))
+
+pages = [
+	"Home" => "index.md",
+	"Quick Reference" => "quickref.md",
+	"API" => [
+		"Results" => "api.md",
+		"Results.Types" => "api/Types.md",
+		"Results.Functions" => "api/Functions.md",
+		"Results.Macros" => "api/Macros.md",
+		"Results.Collection" => "api/Collection.md",
+	],
+]
 
 makedocs(
 	modules = [Results],
 	sitename = "Results.jl Documentation",
 	authors = "Colin Gilgenbach",
-	pages = [
-		"Home" => "index.md",
-		"Quick Reference" => "quickref.md",
-		"API" => "api.md",
-	],
+	pages = pages,
 	#checkdocs = true,
 	linkcheck = true,
 )

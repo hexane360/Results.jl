@@ -19,7 +19,8 @@ A tutorial and examples are under construction.
 ## Outline
 
 ```@contents
-Pages = ["index.md", "quickref.md", "api.md"]
+Pages = ["index.md", "quickref.md", "api.md", "api/Types.md",
+         "api/Functions.md", "api/Macros.md", "api/Collection.md"]
 Depth = 5
 ```
 

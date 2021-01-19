@@ -1,3 +1,10 @@
+module Macros
+
+using Results
+
+export @try_unwrap, @unwrap_or, @catch_result
+export @some_if, @if_let, @while_let
+
 """
 Unwraps an Ok or Some value, while returning error values upstream.
 Highly useful for chaining computations together.
@@ -165,3 +172,5 @@ end
 macro if_let(assign::Expr, then_block::Expr)
 	:(@if_let $assign $then_block begin nothing end)
 end
+
+end # module
