@@ -48,13 +48,14 @@ struct UnwrapError <: Exception
 	s::String
 end
 
-promote_rule(::Type{Ok{T}}, ::Type{Ok{S}}) where {T, S <: T} = Ok{T}
-promote_rule(::Type{Err{T}}, ::Type{Err{S}}) where {T, S <: T} = Err{T}
-convert(::Type{Ok{T}}, x::Ok{S}) where {T, S <: T} = Ok{T}(convert(T, x.value))
-convert(::Type{Err{T}}, x::Err{S}) where {T, S <: T} = Err{T}(convert(T, x.error))
-convert(::Type{Result{T, E}}, x::Ok{S}) where {T, E, S <: T} = Ok{T}(convert(T, x.value))
-convert(::Type{Result{T, E}}, x::Err{S}) where {T, E, S <: E} = Err{E}(convert(E, x.error))
-convert(::Type{Option{T}}, x::Some{S}) where {T, S <: T} = Some{T}(convert(T, x.value))
+promote_rule(::Type{Ok{T}}, ::Type{Ok{S}}) where {T, S} = Ok{promote_type(T, S)}
+promote_rule(::Type{Err{T}}, ::Type{Err{S}}) where {T, S} = Err{promote_type(T, S)}
+promote_rule(::Type{Ok{T}}, ::Type{Err{S}}) where {T, S} = Result{T, S}
+convert(::Type{Ok{T}}, x::Ok) where {T} = Ok{T}(convert(T, x.value))
+convert(::Type{Err{T}}, x::Err) where {T} = Err{T}(convert(T, x.error))
+convert(::Type{Result{T, E}}, x::Ok) where {T, E} = Ok{T}(convert(T, x.value))
+convert(::Type{Result{T, E}}, x::Err) where {T, E} = Err{E}(convert(E, x.error))
+convert(::Type{Option{T}}, x::Some) where {T} = Some{T}(convert(T, x.value))
 
 """[`Base.isequal`](https://docs.julialang.org/en/v1/base/base/#Base.isequal) for `Some` values"""
 ==(a::Some, b::Some)::Bool = a.value == b.value
