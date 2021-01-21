@@ -97,11 +97,11 @@ try_map(::None, ::Option...)::None = none
 #try_map(f, tup::Tuple{Vararg{Option}})::Option = try_map(f, tup...)
 
 """
-    try_map(f)::Function
+    try_map(f::Callable)::Function
 
 Partially-applied version of try_map.
 """
-try_map(f)::Function = (opt...) -> try_map(f, opt...)
+try_map(f::Base.Callable)::Function = (opt...) -> try_map(f, opt...)
 
 """
 Shorthand for [`try_map`](@ref). Enter as `\\leftarrow`.

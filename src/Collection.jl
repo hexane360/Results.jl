@@ -10,11 +10,11 @@ export try_pop!, try_get, try_peek, try_first, try_last
 function try_pop! end
 
 """
-    try_pop!(a::AbstractArray{T})::Option{T}
+    try_pop!(a::AbstractVector)::Option{T}
 
-Try to pop a value from an array.
+Try to pop a value from a vector.
 """
-function try_pop!(a::AbstractArray{T})::Option{T} where {T}
+function try_pop!(a::AbstractVector{T})::Option{T} where {T}
 	isempty(a) ? none : Some(pop!(a))
 end
 
@@ -53,7 +53,7 @@ Try to retrieve index `index` from an array. Uses [`Base.isassigned`](https://do
 under the hood.
 """
 function try_get(a::AbstractArray{T}, index::Integer...)::Option{T} where {T}
-	@some_if isassigned(a, index...) a[index...]
+	@some_if checkbounds(Bool, a, index...) a[index...]
 end
 
 """
@@ -63,7 +63,7 @@ Try to retrieve index `index` from a string. Uses [`Base.checkbounds`](https://d
 and [`Base.isvalid`](https://docs.julialang.org/en/v1/base/base/#Base.isvalid) under the hood.
 """
 function try_get(s::AbstractString, i::Integer)::Option{AbstractChar}
-	@some_if (checkbounds(s, i) && isvalid(s, i)) s[i]
+	@some_if isvalid(s, i) s[i]
 end
 
 """
@@ -88,7 +88,8 @@ try_get(t::NamedTuple, k::Union{Integer, Symbol})::Option = @some_if haskey(t, k
 Fallback method for `try_get`. Relies on exception-handling,
 so it is slower than the specialized methods.
 """
-try_get(a, index...)::Option = ok(@catch_result(Union{BoundsError, KeyError}, getindex(a, index...)))
+try_get(a, index...)::Option = ok(@catch_result(Union{BoundsError, KeyError, UndefRefError},
+                                                getindex(a, index...)))
 
 """
     try_peek(iter; state=missing)::Option
@@ -99,7 +100,7 @@ not `missing`, use it in the call to [`iterate`](@ref).
 function try_peek end
 
 try_peek(iter; state=missing)::Option = try_map((x) -> x[1], to_option(ismissing(state) ? iterate(iter) : iterate(iter, state)))
-try_peek(iter::Iterators.Stateful; state=missing)::Option = @some_if !Iterators.isdone(iter) peek(iter)
+try_peek(iter::Iterators.Stateful)::Option = @some_if !Iterators.isdone(iter) peek(iter)
 
 """
     try_first(c)::Option

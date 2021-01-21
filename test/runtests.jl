@@ -8,11 +8,14 @@ end
 
 possible_types(f::Function, arg::Type)::Set{Type} = possible_types(f, (arg,))
 
-const unknown_ok =let _A = TypeVar(:_A)
+const unknown_ok = let _A = TypeVar(:_A)
 	UnionAll(_A, Ok{_A})
 end
 const unknown_err = let _A = TypeVar(:_A)
 	UnionAll(_A, Err{_A})
+end
+const unknown_some = let _A = TypeVar(:_A)
+	UnionAll(_A, Some{_A})
 end
 
 @testset "Results" begin

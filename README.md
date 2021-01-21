@@ -4,7 +4,7 @@ Results.jl: Fallable computation for Julia
 Results.jl provides a `Result` and `Option` type for computation,
 as featured in Rust, Haskell (as `Either`), OCaml, and many more.
 
-[![][ci-badge]][ci-url] [![][commit-badge]][commit-url] [![][juliahub-badge]][juliahub-url] [![][docs-stable-badge]][docs-stable-url] [![][docs-dev-badge]][docs-dev-url]
+[![][ci-badge]][ci-url] [![][codecov-badge]][codecov-url] [![][commit-badge]][commit-url] [![][juliahub-badge]][juliahub-url] [![][docs-stable-badge]][docs-stable-url] [![][docs-dev-badge]][docs-dev-url]
 
 This library is distributed under the LGPL v3.0 license.
 
@@ -33,6 +33,8 @@ Pull requests and issues are welcome. This is my first Julia package, so I'm exp
 
 [ci-badge]: https://github.com/hexane360/Results.jl/workflows/CI/badge.svg
 [ci-url]: https://github.com/hexane360/Results.jl/actions?query=workflow%3ACI
+[codecov-badge]: https://codecov.io/gh/hexane360/Results.jl/branch/master/graph/badge.svg?token=DXWZVCID51
+[codecov-url]: https://codecov.io/gh/hexane360/Results.jl
 [commit-badge]: https://img.shields.io/github/last-commit/hexane360/Results.jl
 [commit-url]: https://github.com/hexane360/Results.jl/commits
 [juliahub-badge]: https://juliahub.com/docs/Results/version.svg
