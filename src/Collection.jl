@@ -1,5 +1,7 @@
 module Collection
 
+using Base: peek  # not exported in Julia 1.3
+
 using ..Types
 using ..Functions
 using ..Macros
