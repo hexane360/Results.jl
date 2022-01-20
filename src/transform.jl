@@ -4,6 +4,7 @@ using Base: IteratorEltype, HasEltype, eltype
 export ok_or, ok
 export try_map, map_err
 export and_then, try_collect
+export try_collect_option, try_collect_result
 export flatten
 
 """
@@ -260,7 +261,7 @@ function _strip_result_type(ty::Union)
 end
 _strip_result_type(ty::Type) = Some(ty)
 _strip_result_type(::Type{Ok{T}}) where {T} = Some(T)
-_strip_reslut_type(::Type{Ok}) = Some(Any)
+_strip_result_type(::Type{Ok}) = Some(Any)
 _strip_result_type(::Type{Err{T}}) where {T} = none
 _strip_result_type(::Type{Err}) = none
 

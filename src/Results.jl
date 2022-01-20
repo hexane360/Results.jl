@@ -40,7 +40,7 @@ export is_ok, is_err, is_some, is_none, has_val
 # transform functions
 export ok_or, ok
 export try_map, map_err
-export and_then, try_collect
+export and_then, try_collect, try_collect_option, try_collect_result
 export flatten
 # macros
 export @try_unwrap, @unwrap_or, @catch_result
