@@ -40,6 +40,6 @@ makedocs(
 deploydocs(
 	repo = "github.com/hexane360/Results.jl.git",
 	branch = "gh-pages",
-	devbranch = "master",
+	devbranch = "main",
 	devurl = "dev"
 )
